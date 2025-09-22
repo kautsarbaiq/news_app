@@ -59,7 +59,9 @@ class _ApiScreenState extends State<ApiScreen> {
 
   Widget categoryButton(String label, String type) {
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: _selectedCategory == type ? Colors.blue : Colors.grey),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _selectedCategory == type ? Colors.blue : Colors.grey,
+      ),
       onPressed: () {
         setState(() {
           _selectedCategory = type;
@@ -78,59 +80,110 @@ class _ApiScreenState extends State<ApiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('News App')),
-      body: Column(
-        children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              prefixIcon: IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  _applySearch('');
-                },
-                icon: Icon(Icons.search),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 20),
+
+            // Padding hanya untuk judul
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Kategori Berita',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Poppins',
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 20),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                categoryButton('semua', ''),
-                categoryButton('nasional', 'nasional'),
-                categoryButton('internasional', 'internasional'),
-                categoryButton('ekonomi', 'ekonomi'),
-                categoryButton('olahraga', 'olahraga'),
-                categoryButton('teknologi', 'teknologi'),
-                categoryButton('hiburan', 'hiburan'),
-                categoryButton('gaya-hidup', 'gaya-hidup'),
-              ],
-            ),
-          ),
-          Expanded(
-            child: isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _filteredNews.isEmpty
-                ? Center(child: Text('No news Found'))
-                : ListView.builder(
-                    itemCount: _filteredNews.length,
-                    itemBuilder: (context, index) {
-                      final item = _filteredNews[index];
-                      return ListTile(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => DetailScreen(newsDetail: item)));
-                        },
-                        title: Text(item['title'], maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(formatDate(item['isoDate']), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        leading: Image.network(item['image']['small']),
-                        // trailing: Text(item['isoDate']),
-                      );
-                    },
+
+            SizedBox(height: 10),
+
+            // Padding untuk TextField
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Cari berita...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-          ),
-        ],
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+                onChanged: _applySearch,
+              ),
+            ),
+
+            SizedBox(height: 20),
+
+            // Padding untuk baris kategori
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              // Padding ini agar tombol pertama tidak mepet kiri
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  categoryButton('Semua', ''),
+                  categoryButton('Nasional', 'nasional'),
+                  categoryButton('Ekonomi', 'ekonomi'),
+                  categoryButton('Teknologi', 'teknologi'),
+                  categoryButton('Olahraga', 'olahraga'),
+                  categoryButton('Hiburan', 'hiburan'),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 10),
+
+            // Expanded untuk daftar berita
+            Expanded(
+              child: ListView.builder(
+                itemCount: _filteredNews.length,
+                itemBuilder: (context, index) {
+                  final item = _filteredNews[index];
+                  // Padding untuk setiap item di dalam list
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                DetailScreen(newsDetail: item),
+                          ),
+                        );
+                      },
+                      title: Text(
+                        item['title'],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(formatDate(item['isoDate'])),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          item['image']['small'],
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
