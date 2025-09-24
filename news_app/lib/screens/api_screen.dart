@@ -1,259 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:news_app/api/api.dart';
 import 'package:intl/intl.dart';
+import 'package:news_app/news_controller.dart';
 import 'detail_screen.dart';
 
-class ApiScreen extends StatefulWidget {
+class ApiScreen extends StatelessWidget {
   const ApiScreen({super.key});
 
   @override
-  State<ApiScreen> createState() => _ApiScreenState();
-}
-
-class _ApiScreenState extends State<ApiScreen>
-    with SingleTickerProviderStateMixin {
-  // --- State Variables ---
-  late TabController _tabController;
-  final TextEditingController _searchController = TextEditingController();
-  final List<String> _categories = [
-    'semua',
-    'nasional',
-    'ekonomi',
-    'teknologi',
-    'olahraga',
-  ];
-  List<Map<String, dynamic>> _allNews = [];
-  List<Map<String, dynamic>> _filteredNews = [];
-  bool isLoading = true;
-  bool _isSearching = false;
-
-  // --- Lifecycle Methods ---
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
-    fetchNews(_categories[0]);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        fetchNews(_categories[_tabController.index]);
-      }
-    });
-    _searchController.addListener(() {
-      _applySearch(_searchController.text);
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  // --- Data & Logic ---
-  Future<void> fetchNews(String type) async {
-    setState(() => isLoading = true);
-    final apiType = type == 'semua' ? '' : type;
-    final data = await Api().getApi(type: apiType);
-    if (mounted) {
-      setState(() {
-        _allNews = data;
-        _filteredNews = data;
-        isLoading = false;
-      });
-    }
-  }
-
-  void _applySearch(String query) {
-    setState(() {
-      _filteredNews = query.isEmpty
-          ? _allNews
-          : _allNews.where((item) {
-              final title = item['title'].toString().toLowerCase();
-              return title.contains(query.toLowerCase());
-            }).toList();
-    });
-  }
-
-  String formatDate(String date) {
-    return DateFormat('dd MMM yyyy').format(DateTime.parse(date));
-  }
-
-  // --- Build Method ---
-  @override
   Widget build(BuildContext context) {
-    // --- SKEMA WARNA ---
+    // Inisialisasi controller. GetX akan mengelolanya secara otomatis.
+    final NewsController controller = Get.put(NewsController());
+    
+    // Skema Warna
     const Color scaffoldBackground = Color(0xFF121212);
     const Color primaryTextColor = Colors.white;
     const Color secondaryTextColor = Color(0xFFAAAAAA);
-    const Color accentColor = Colors.white;
     const Color navBarColor = Color(0xFF1E1E1E);
 
     return Scaffold(
       backgroundColor: scaffoldBackground,
-      extendBody: true, // <-- PENTING: Untuk floating navigation bar
+      extendBody: true,
       appBar: AppBar(
         backgroundColor: scaffoldBackground,
         elevation: 0,
         titleSpacing: 16.0,
-        title: _isSearching
+        // Gunakan Obx untuk membuat AppBar reaktif terhadap state 'isSearching'
+        title: Obx(() => controller.isSearching.value
             ? TextField(
-                controller: _searchController,
+                controller: controller.searchController,
                 autofocus: true,
                 decoration: InputDecoration(
                   hintText: 'Cari berita...',
                   border: InputBorder.none,
                   hintStyle: GoogleFonts.poppins(color: secondaryTextColor),
                 ),
-                style: GoogleFonts.poppins(
-                  color: primaryTextColor,
-                  fontSize: 18,
-                ),
+                style: GoogleFonts.poppins(color: primaryTextColor, fontSize: 18),
               )
             : Text(
                 'News Update',
                 style: GoogleFonts.poppins(
-                  color: primaryTextColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+                    color: primaryTextColor, fontSize: 28, fontWeight: FontWeight.bold),
+              )),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isSearching ? Icons.close : Icons.search,
-              color: primaryTextColor,
-            ),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) {
-                  _searchController.clear();
-                }
-              });
-            },
-          ),
+          Obx(() => IconButton(
+                icon: Icon(controller.isSearching.value ? Icons.close : Icons.search, color: primaryTextColor),
+                onPressed: () => controller.toggleSearch(),
+              )),
         ],
         bottom: TabBar(
-          controller: _tabController,
+          controller: controller.tabController,
           isScrollable: true,
-          indicatorColor: accentColor,
+          indicatorColor: primaryTextColor,
           labelColor: primaryTextColor,
           unselectedLabelColor: secondaryTextColor,
-          labelStyle: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-          unselectedLabelStyle: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.normal,
-          ),
-          tabs: _categories
-              .map((category) => Tab(text: category.toUpperCase()))
-              .toList(),
+          labelStyle: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+          tabs: controller.categories.map((category) => Tab(text: category.toUpperCase())).toList(),
         ),
       ),
-      // --- PERUBAHAN LOGIKA BODY ---
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: accentColor))
-          : _isSearching
-          // TAMPILAN SAAT MENCARI: HANYA SATU LIST VERTIKAL
-          ? ListView.builder(
-              itemCount: _filteredNews.length,
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                100,
-              ), // Padding bawah agar tidak tertutup nav bar
-              itemBuilder: (context, index) =>
-                  buildSmallCard(_filteredNews[index]),
-            )
-          // TAMPILAN DEFAULT: LAYOUT KOMPLEKS
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 250,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _filteredNews.length > 5
-                          ? 5
-                          : _filteredNews.length,
-                      padding: const EdgeInsets.only(left: 16),
-                      itemBuilder: (context, index) =>
-                          buildBigCard(_filteredNews[index]),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      "Local News",
-                      style: GoogleFonts.poppins(
-                        color: primaryTextColor,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+      // Body utama juga dibungkus Obx untuk menampilkan loading atau konten
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator(color: primaryTextColor));
+        }
+
+        return controller.isSearching.value
+            // Tampilan saat mencari
+            ? ListView.builder(
+                itemCount: controller.filteredNews.length,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                itemBuilder: (context, index) => buildSmallCard(controller.filteredNews[index], controller.filteredNews),
+              )
+            // Tampilan default
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 250,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: controller.filteredNews.length > 5 ? 5 : controller.filteredNews.length,
+                        padding: const EdgeInsets.only(left: 16),
+                        itemBuilder: (context, index) => buildBigCard(controller.filteredNews[index], controller.filteredNews),
                       ),
                     ),
-                  ),
-                  ListView.builder(
-                    itemCount: _filteredNews.length > 5
-                        ? _filteredNews.length - 5
-                        : 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemBuilder: (context, index) =>
-                        buildSmallCard(_filteredNews[index + 5]),
-                  ),
-                  const SizedBox(
-                    height: 100,
-                  ), // Padding bawah agar tidak tertutup nav bar
-                ],
-              ),
-            ),
-      // --- PERUBAHAN NAVIGATION BAR ---
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text("Local News", style: GoogleFonts.poppins(color: primaryTextColor, fontSize: 22, fontWeight: FontWeight.bold)),
+                    ),
+                    ListView.builder(
+                      itemCount: controller.filteredNews.length > 5 ? controller.filteredNews.length - 5 : 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemBuilder: (context, index) => buildSmallCard(controller.filteredNews[index + 5], controller.filteredNews),
+                    ),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              );
+      }),
       bottomNavigationBar: Container(
         margin: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 255, 255, 255),
-          borderRadius: BorderRadius.circular(50), // Membuat jadi full rounded
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          color: navBarColor,
+          borderRadius: BorderRadius.circular(50),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(50),
           child: BottomNavigationBar(
-            backgroundColor:
-                const Color.fromARGB(0, 255, 255, 255), // Transparan agar warna container terlihat
+            backgroundColor: Colors.transparent,
             type: BottomNavigationBarType.fixed,
-            selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
+            selectedItemColor: primaryTextColor,
             unselectedItemColor: secondaryTextColor,
             showSelectedLabels: false,
             showUnselectedLabels: false,
             currentIndex: 0,
-            elevation: 0, // Hilangkan shadow bawaan
+            elevation: 0,
             items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_filled),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bookmark),
-                label: 'Saved',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-              ),
+              BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Saved'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
             ],
           ),
         ),
@@ -261,14 +132,21 @@ class _ApiScreenState extends State<ApiScreen>
     );
   }
 
-  // --- Custom Widget Builders ---
-  Widget buildBigCard(Map<String, dynamic> item) {
+  // --- Widget Builders (sekarang menjadi method biasa di dalam StatelessWidget) ---
+  
+  String formatDate(String date) {
+    try {
+      return DateFormat('dd MMM yyyy').format(DateTime.parse(date));
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  Widget buildBigCard(Map<String, dynamic> item, List<Map<String, dynamic>> allNews) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DetailScreen(newsDetail: item)),
-      ),
+      onTap: () => Get.to(() => DetailScreen(newsDetail: item, allNews: allNews)),
       child: Container(
+        // ... (UI untuk Big Card sama persis seperti sebelumnya)
         width: 300,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
@@ -292,27 +170,15 @@ class _ApiScreenState extends State<ApiScreen>
               ),
             ),
             Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
+              bottom: 20, left: 20, right: 20,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item['title'],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(item['title'], maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(
-                    '${item['creator'] ?? 'Unknown'} • ${formatDate(item['isoDate'])}',
-                    style: GoogleFonts.poppins(color: Colors.white70),
-                  ),
+                  Text('${item['creator'] ?? 'Unknown'} • ${formatDate(item['isoDate'])}',
+                    style: GoogleFonts.poppins(color: Colors.white70)),
                 ],
               ),
             ),
@@ -322,13 +188,11 @@ class _ApiScreenState extends State<ApiScreen>
     );
   }
 
-  Widget buildSmallCard(Map<String, dynamic> item) {
+  Widget buildSmallCard(Map<String, dynamic> item, List<Map<String, dynamic>> allNews) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DetailScreen(newsDetail: item)),
-      ),
+      onTap: () => Get.to(() => DetailScreen(newsDetail: item, allNews: allNews)),
       child: Padding(
+        // ... (UI untuk Small Card sama persis seperti sebelumnya)
         padding: const EdgeInsets.only(bottom: 20),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,24 +201,11 @@ class _ApiScreenState extends State<ApiScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item['title'],
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Text(item['title'], maxLines: 3, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white)),
                   const SizedBox(height: 8),
-                  Text(
-                    '${item['creator'] ?? 'Unknown'} • ${formatDate(item['isoDate'])}',
-                    style: GoogleFonts.poppins(
-                      color: const Color(0xFFAAAAAA),
-                      fontSize: 12,
-                    ),
-                  ),
+                  Text('${item['creator'] ?? 'Unknown'} • ${formatDate(item['isoDate'])}',
+                    style: GoogleFonts.poppins(color: const Color(0xFFAAAAAA), fontSize: 12)),
                 ],
               ),
             ),
@@ -362,14 +213,9 @@ class _ApiScreenState extends State<ApiScreen>
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
-                item['image']['small'],
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
+                item['image']['small'], width: 100, height: 100, fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.grey[800],
+                  width: 100, height: 100, color: Colors.grey[800],
                   child: const Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
