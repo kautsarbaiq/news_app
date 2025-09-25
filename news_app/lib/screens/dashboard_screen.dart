@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:news_app/news_controller.dart';
 import 'package:news_app/screens/api_screen.dart';
+import 'package:news_app/screens/profile_screen.dart'; // <-- Jangan lupa import
 import 'package:news_app/screens/bookmark_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   DashboardScreen({super.key});
 
-  final List<Widget> pages = [
-    ApiScreen(),
-    BookmarkScreen(),
-    const Scaffold(body: Center(child: Text("Halaman Akun"))), // Halaman Akun
-  ];
+  // KODE BARU
+// ...
 
+final List<Widget> pages = [
+  ApiScreen(),
+  BookmarkScreen(),
+  const ProfileScreen(), // <-- Ganti dengan halaman yang baru
+];
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(NewsController());
