@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // <-- Import GetX
-import 'package:news_app/screens/api_screen.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:news_app/screens/dashboard_screen.dart'; // Pastikan path ini benar
 
-void main() {
+Future<void> main() async {
+  // Wajib ada untuk inisialisasi GetStorage sebelum runApp
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
   runApp(const MyApp());
 }
 
@@ -11,14 +15,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ganti MaterialApp menjadi GetMaterialApp
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'News App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF121212),
       ),
-      home: const ApiScreen(),
+      // PASTIKAN BAGIAN INI BENAR
+      home: DashboardScreen(),
     );
   }
 }
